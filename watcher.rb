@@ -1,13 +1,19 @@
-require 'pi_piper'
-include PiPiper
+# run with
+# rvmsudo ruby watcher.rb
+#
 
-watch pin: 23 do
-  puts "change #{last_value} #{value}"
+require 'pi_piper'
+
+puts "start"
+pwm = PiPiper::Pwm.new pin: 18
+pwm.value = 0.5
+
+PiPiper.watch pin: 17, pull: :up do |pin|
+  puts "change #{pin.last_value} to #{pin.value}"
+  pwm.on
+  sleep 1
+  pwm.off
 end
 
-pin = PiPiper::Pin.new(pin: 17, direction: :out)
-pin.on
-sleep 1
-pin.off
-
-PiPer.wait
+PiPiper.wait
+puts "end"
