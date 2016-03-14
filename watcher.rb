@@ -3,17 +3,42 @@
 #
 
 require 'pi_piper'
+load 'camera.rb'
 
-puts "start"
-pwm = PiPiper::Pwm.new pin: 18
-pwm.value = 0.5
+# http://www.raspberrypi-spy.co.uk/2012/06/simple-guide-to-the-rpi-gpio-header-and-pins/#prettyPhoto
+DOOR_PIN = 7
+BUTTON_PIN = 8
+SOUND_PIN = 18 # pwm
 
-PiPiper.watch pin: 17, pull: :up do |pin|
-  puts "change #{pin.last_value} to #{pin.value}"
-  pwm.on
-  sleep 1
-  pwm.off
+DEFAULT_SOUND_VALUE = 0.5
+
+@pwm = PiPiper::Pwm.new pin: SOUND_PIN
+@pwm.value = DEFAULT_SOUND_VALUE
+@pwm.off
+
+def beep(duration = 1, value = DEFAULT_SOUND_VALUE)
+  @pwm.value = value
+  @pwm.on
+  sleep duration
+  @pwm.off
 end
 
+PiPiper.watch pin: DOOR_PIN, pull: :up do |pin|
+  puts "door #{pin.last_value} to #{pin.value}"
+  beep
+  Camera.enable
+end
+
+# pull up is much stronger, and we need additional pull up 500 ohm
+PiPiper.watch pin: BUTTON_PIN do |pin|
+  puts "button change #{pin.last_value} to #{pin.value}"
+  beep 0.2, 0.2
+  Camera.disable
+end
+
+puts "start"
+(0..0.5).step(0.01).each do |value|
+  beep 0.05, value
+end
 PiPiper.wait
 puts "end"
