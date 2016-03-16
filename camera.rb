@@ -1,19 +1,55 @@
 require 'uri'
 require 'net/http'
+require 'ostruct'
 
-module Camera
+class Camera
   CAMERA_URL = "http://192.168.0.3"
-  CAMERA_AUTHORIZATION = ENV["CAMERA_AUTHORIZATION"]
+  CAMERA_AUTHORIZATION = ENV["rvm_CAMERA_AUTHORIZATION"]
 
-  def self.camera(enable = true)
+  attr_accessor :state
+
+  def initialize
+    @state = false
+  end
+
+  def enable
+    change_state(true)
+  end
+
+  def disable
+    change_state(false)
+  end
+
+  def enabled?
+    state
+  end
+
+  def disabled?
+    !state
+  end
+
+  def enabled!
+    @state = true
+  end
+
+  def disabled!
+    @state = false
+  end
+
+  private
+
+  def change_state(enable = true)
     #uri_str = "http://192.168.0.3/form/enet?enet_source=md.asp&enet_avs_md_enable=No"
     uri_str = CAMERA_URL + "/form/enet"
-    if enable
+    if enable && disabled?
       puts "Enabling camera"
       enable_param = 'Yes'
-    else
+    elsif !enable && enabled?
       puts "Disabling camera"
       enable_param = 'No'
+    else
+      puts "Already " + (enable ? 'enabled' : 'disabled')
+      return true
     end
     params = {
       enet_source: 'md.asp',
@@ -24,22 +60,26 @@ module Camera
 
     req = Net::HTTP::Get.new(uri)
     req['Authorization'] = "Basic #{CAMERA_AUTHORIZATION}"
-    res = Net::HTTP.start(uri.hostname, uri.port) do |http|
-      http.request(req)
+    begin
+      res = Net::HTTP.start(uri.hostname, uri.port) do |http|
+        http.request(req)
+      end
+    # http://stackoverflow.com/questions/5370697/what-s-the-best-way-to-handle-exceptions-from-nethttp
+    rescue Timeout::Error, Errno::EINVAL, Errno::ECONNRESET, EOFError, Net::OpenTimeout, Errno::EHOSTUNREACH,
+       Net::HTTPBadResponse, Net::HTTPHeaderSyntaxError, Net::ProtocolError => e
+       res = OpenStruct.new body: e.message
     end
     if res.class == Net::HTTPFound
-      puts "Done"
+      if enable
+        enabled!
+      else
+        disabled!
+      end
+      true
     else
       puts res.body
+      false
     end
-  end
-
-  def self.enable
-    camera(true)
-  end
-
-  def self.disable
-    camera(false)
   end
 end
 
