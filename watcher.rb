@@ -6,11 +6,14 @@ require 'pi_piper'
 require 'ostruct'
 load 'camera.rb'
 load 'sound.rb'
+load 's3.rb'
 
 # http://www.raspberrypi-spy.co.uk/2012/06/simple-guide-to-the-rpi-gpio-header-and-pins/#prettyPhoto
 DOOR_PIN = 7
 BUTTON_PIN = 8
 SOUND_PIN = 18 # pwm
+TIMEOUT = 2
+VIDEO_LENGTH = 5000
 
 sound = Sound.new sound_pin: SOUND_PIN
 camera = Camera.new
@@ -31,14 +34,16 @@ PiPiper.watch pin: DOOR_PIN, pull: :up do |pin|
   else
     if state.isActive
       puts "value=0 isActive=true DOOR OPENED"
-      5.times do |i|
+      TIMEOUT.times do |i|
         break unless state.isActive
         sleep 2
         sound.beep 0.2
-        if i == 5-1
+        if i == TIMEOUT-1
           camera.enable
-          sleep 10
+          system "raspivid -o vid.h264 -t #{VIDEO_LENGTH}"
+          S3.upload 'vid.h264'
           camera.disable
+          sound.beep 2
         else
           print i
         end
