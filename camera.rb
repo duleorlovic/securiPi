@@ -52,8 +52,10 @@ class Camera
       return true
     end
     params = {
-      enet_source: 'md.asp',
-      enet_avs_md_enable: enable_param,
+      # enet_source: 'md.asp',
+      # enet_avs_md_enable: enable_param,
+      enet_source: 'schedule.asp',
+      enet_avs_mail_schdule_enable: enable_param,
     }
     uri = URI(uri_str)
     uri.query = URI.encode_www_form(params)
