@@ -7,13 +7,14 @@ require 'ostruct'
 load 'camera.rb'
 load 'sound.rb'
 load 's3.rb'
+load 'mail.rb'
 
 # http://www.raspberrypi-spy.co.uk/2012/06/simple-guide-to-the-rpi-gpio-header-and-pins/#prettyPhoto
 DOOR_PIN = 7
 BUTTON_PIN = 8
 SOUND_PIN = 18 # pwm
-TIMEOUT = 2
-VIDEO_LENGTH = 5000
+VIDEO_LENGTH = 6000
+BIT_RATE = 4_000_000 # default is 17_000_000
 
 sound = Sound.new sound_pin: SOUND_PIN
 camera = Camera.new
@@ -33,21 +34,29 @@ PiPiper.watch pin: DOOR_PIN, pull: :up do |pin|
     puts "Noise since value=#{pin.value}" 
   else
     if state.isActive
-      puts "value=0 isActive=true DOOR OPENED"
-      TIMEOUT.times do |i|
+      puts "value=0 isActive=true DOOR OPENED recording video"
+      image_file = "temp/" + Time.now.to_s.tr(' ','_').tr(':','-').tr('+','-') + ".jpg"
+      system "raspistill -o #{image_file} -vf -hf -w 300 -h 300"
+      video_file = "temp/" + Time.now.to_s.tr(' ','_').tr(':','-').tr('+','-') + ".h264"
+      system "raspivid -o #{video_file} -vf -hf -t #{VIDEO_LENGTH} -b #{BIT_RATE} &"
+      timeout = VIDEO_LENGTH / 1000
+      timeout.times do |i|
         break unless state.isActive
         sleep 2
         sound.beep 0.2
-        if i == TIMEOUT-1
+        if i == timeout-1
           camera.enable
-          system "raspivid -o vid.h264 -t #{VIDEO_LENGTH}"
-          S3.upload 'vid.h264'
+          MyMail.send attachment: image_file, text: S3.getUrl(video_file)
+          S3.upload video_file
           camera.disable
+          puts "Disable motion"
           sound.beep 2
         else
           print i
         end
       end
+      system "rm #{video_file}" unless state.isActive
+      system "rm #{image_file}" unless state.isActive
     else
       puts "isActive=false"
     end
@@ -62,13 +71,18 @@ PiPiper.watch pin: BUTTON_PIN, trigger: :falling do |pin|
   sleep 0.5
   pin.read
   if pin.value == 0
-    puts "long button #{pin.last_value} to #{pin.value}"
+    puts "long button #{pin.last_value} to #{pin.value} isActive=TRUE"
+    3.times do
+      sound.beep
+      sleep 2
+    end
     state.isActive = true
     sound.activate
   else
-    puts "short button #{pin.last_value} to #{pin.value}"
+    puts "short button #{pin.last_value} to #{pin.value} isActive=FALSE"
     state.isActive = false
     sound.deactivate
+    camera.disable
   end
 end
 

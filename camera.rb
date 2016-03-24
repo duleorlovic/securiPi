@@ -41,16 +41,14 @@ class Camera
   def change_state(enable = true)
     #uri_str = "http://192.168.0.3/form/enet?enet_source=md.asp&enet_avs_md_enable=No"
     uri_str = CAMERA_URL + "/form/enet"
-    if enable && disabled?
+    if enable
       puts "Enabling camera"
       enable_param = 'Yes'
-    elsif !enable && enabled?
+    else
       puts "Disabling camera"
       enable_param = 'No'
-    else
-      puts "Already " + (enable ? 'enabled' : 'disabled')
-      return true
     end
+    #  puts "Already " + (enable ? 'enabled' : 'disabled')
     params = {
       # enet_source: 'md.asp',
       # enet_avs_md_enable: enable_param,
