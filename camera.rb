@@ -1,3 +1,7 @@
+# Camera
+#
+# ruby -e "load 'camera.rb';c=Camera.new;c.disable"
+# 
 require 'uri'
 require 'net/http'
 require 'ostruct'

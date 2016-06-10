@@ -1,5 +1,8 @@
 require 'mail'
 
+# test with
+# rvmsudo ruby -e "load 'mail.rb';MyMail.send()"
+
 options = {
   address: "mail.gmx.com",
   port: 587,
@@ -21,5 +24,7 @@ module MyMail
       body text
       add_file attachment
     end
+  rescue StandardError => e
+    puts "MyMail.send failed #{e}"
   end
 end
